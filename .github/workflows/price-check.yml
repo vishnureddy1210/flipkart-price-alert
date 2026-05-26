@@ -2,8 +2,8 @@ name: Flipkart Price Checker Run
 
 on:
   schedule:
-    - cron: '0 */6 * * *' # Runs automatically every 6 hours
-  workflow_dispatch: # Manual button on GitHub
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
 
 jobs:
   run-scraper:
@@ -22,7 +22,7 @@ jobs:
     - name: Install System Dependencies & Pip Packages
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements.txt # Removed 'backend/' since this is root on GitHub
+        pip install -r requirements.txt
 
     - name: Install Playwright Chromium Browser
       run: |
@@ -35,4 +35,4 @@ jobs:
         SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
         SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
       run: |
-        python main.py # Removed 'cd backend' since we are already here
+        python main.py
