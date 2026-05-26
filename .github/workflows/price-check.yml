@@ -2,8 +2,8 @@ name: Flipkart Price Checker Run
 
 on:
   schedule:
-    - cron: '0 */6 * * *'
-  workflow_dispatch:
+    - cron: '0 */6 * * *' # Automatically runs every 6 hours
+  workflow_dispatch: # Gives you a manual play button on GitHub to test it anytime
 
 jobs:
   run-scraper:
