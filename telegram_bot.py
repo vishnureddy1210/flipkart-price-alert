@@ -120,7 +120,6 @@ async def handle_updates() -> None:
                         continue
 
                     try:
-                        # Fast path database injection to prevent web container timeout bottlenecks
                         product = db.add_product(
                             url=url,
                             name="⏳ Fetching item details on next background sync...",
