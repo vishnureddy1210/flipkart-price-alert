@@ -55,7 +55,7 @@ class AddProductRequest(BaseModel):
 
 
 # ---- Routes ----
-@app.get("/")
+@app.api_route("/", methods=["GET", "HEAD"])
 def root():
     return {"status": "ok", "message": "Flipkart Price Alert API"}
 
