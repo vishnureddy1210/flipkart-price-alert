@@ -95,11 +95,10 @@ async def handle_updates() -> None:
                         ]
                         await send_message("📋 <b>Tracked products:</b>\n\n" + "\n\n".join(lines))
 
-                # ---- /add <url> <target_price> ----
+                # ---- /add ----
                 elif text.startswith("/add"):
                     parts = text.split()
 
-                    # Validate: must have exactly 3 parts — /add, url, price
                     if len(parts) != 3:
                         await send_message(
                             "⚠️ <b>Wrong format.</b> Use:\n\n"
@@ -110,51 +109,33 @@ async def handle_updates() -> None:
                         continue
 
                     url = parts[1]
-                    # Validate price is a number
                     if not parts[2].isdigit():
                         await send_message("⚠️ Target price must be a number.\n\nExample: <code>/add &lt;url&gt; 55000</code>")
                         continue
 
                     target_price = int(parts[2])
 
-                    # Validate it's a Flipkart URL
                     if "flipkart.com" not in url:
                         await send_message("⚠️ Only Flipkart URLs are supported.\nMake sure your URL contains <code>flipkart.com</code>")
                         continue
 
-                    await send_message("⏳ Fetching product from Flipkart... please wait.")
-
-                    result = await scrape_flipkart(url)
-                    if not result:
-                        await send_message(
-                            "❌ Could not fetch product from Flipkart.\n\n"
-                            "Please check the URL is correct and try again."
+                    try:
+                        # Fast path database injection to prevent web container timeout bottlenecks
+                        product = db.add_product(
+                            url=url,
+                            name="⏳ Fetching item details on next background sync...",
+                            target_price=target_price,
                         )
-                        continue
+                        db.save_price(product["id"], 0)
 
-                    # Save to database
-                    product = db.add_product(
-                        url=url,
-                        name=result["name"],
-                        target_price=target_price,
-                    )
-                    db.save_price(product["id"], result["price"])
-
-                    gap = result["price"] - target_price
-                    if gap <= 0:
-                        status = "🎯 Already at or below your target!"
-                    else:
-                        status = f"Rs.{gap:,} above your target"
-
-                    await send_message(
-                        f"✅ <b>Now tracking!</b>\n\n"
-                        f"<b>{result['name']}</b>\n\n"
-                        f"Current price: Rs.{result['price']:,}\n"
-                        f"Your target:   Rs.{target_price:,}\n"
-                        f"Status: {status}\n\n"
-                        f"I'll alert you every 3 hours if the price drops.\n\n"
-                        f"<a href=\"{url}\">View on Flipkart</a>"
-                    )
+                        await send_message(
+                            f"✅ <b>Link added successfully!</b>\n\n"
+                            f"Target Price: <b>Rs.{target_price:,}</b>\n\n"
+                            f"⚙️ Your background GitHub Action runner will identify the product title and update its tracking price shortly!"
+                        )
+                    except Exception as db_err:
+                        print(f"[bot] Database write failure: {db_err}")
+                        await send_message("❌ Failed to register tracking entry due to a database sync error.")
 
                 # ---- /remove_<id> ----
                 elif text.startswith("/remove_"):
