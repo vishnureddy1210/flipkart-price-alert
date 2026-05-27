@@ -23,22 +23,26 @@ async def scrape_flipkart(url: str) -> dict | None:
     Returns: { "name": str, "price": int, "url": str } or None if it fails.
     """
     async with async_playwright() as p:
+        # Optimized execution flags to enforce a strict memory footprint on low-spec hosting containers
         browser = await p.chromium.launch(
             headless=True,
             args=[
                 "--no-sandbox", 
                 "--disable-setuid-sandbox",
+                "--disable-dev-shm-usage",          # Prevents memory resource constraints by utilizing local disk space
+                "--disable-gpu",                    # Cuts down runtime graphics processing requirements
+                "--disable-software-rasterizer",
+                "--single-process",                 # Allocates single-core processes to avoid browser leaks
                 "--disable-blink-features=AutomationControlled"
             ]
         )
         
         context = await browser.new_context(
             user_agent=random.choice(USER_AGENTS),
-            viewport={"width": 1366, "height": 768},
+            viewport={"width": 1280, "height": 720},
             locale="en-IN"
         )
         
-        # Add basic client context variables to blend in with standard user traffic
         await context.set_extra_http_headers({
             "Accept-Language": "en-IN,en;q=0.9",
             "Connection": "keep-alive"
@@ -46,7 +50,12 @@ async def scrape_flipkart(url: str) -> dict | None:
         
         page = await context.new_page()
         
-        # Native Stealth: Strip away automated navigator properties directly on page initialization
+        # Performance Filter: Drops layout styles, media assets, and fonts to decrease download weight
+        await page.route("**/*", lambda route, request: 
+            route.abort() if request.resource_type in ["image", "media", "font", "stylesheet"] else route.continue_()
+        )
+        
+        # Native Stealth injection 
         await page.add_init_script("""
             Object.defineProperty(navigator, 'webdriver', {
                 get: () => undefined
@@ -54,23 +63,20 @@ async def scrape_flipkart(url: str) -> dict | None:
         """)
 
         try:
-            # Navigate immediately. Do not sleep on a blank page to avoid connection closure.
-            await page.goto(url, wait_until="domcontentloaded", timeout=30000)
+            await page.goto(url, wait_until="domcontentloaded", timeout=25000)
             
-            # Wait safely for dynamic layout assets to complete network transfers
             try:
-                await page.wait_for_load_state("networkidle", timeout=5000)
+                await page.wait_for_load_state("networkidle", timeout=4000)
             except Exception:
-                pass # Networkidle timeouts happen easily; ignore and continue to parsing
+                pass 
 
-            # Human-imitation reading delay after page elements are ready
-            await asyncio.sleep(random.uniform(1.5, 2.5))
+            await asyncio.sleep(random.uniform(1.0, 2.0))
 
             # --- Extract product name ---
             name = None
             name_selectors = [
-                "span.VU-ZEz",          # Current primary title class
-                "span.B_NuCI",          # Alternate/Legacy title class
+                "span.VU-ZEz",          
+                "span.B_NuCI",          
                 "h1 span",             
                 "h1.yhB1nd",           
                 "h1",                  
@@ -88,9 +94,9 @@ async def scrape_flipkart(url: str) -> dict | None:
             # --- Extract price ---
             price = None
             price_selectors = [
-                "div.Nx9bqj._4bCw3M",   # Specialized badge pricing
-                "div.Nx9bqj",           # Standard global price class
-                "div._30jeq3",          # Legacy target layout
+                "div.Nx9bqj._4bCw3M",   
+                "div.Nx9bqj",           
+                "div._30jeq3",          
                 "div._16Jk6d",          
             ]
             
