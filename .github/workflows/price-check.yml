@@ -1,33 +1,26 @@
 name: Flipkart Price Checker Run
-
 on:
   schedule:
-    - cron: '0 */3 * * *' # Automates execution to run every 6 hours
+    - cron: '0 */3 * * *' # Runs every 3 hours
   workflow_dispatch: # Forces a manual trigger button on the Actions panel
-
 jobs:
   run-scraper:
     runs-on: ubuntu-latest
-
     steps:
     - name: Checkout Repository Code
       uses: actions/checkout@v4
-
     - name: Set up Python 3.11
       uses: actions/setup-python@v5
       with:
         python-version: '3.11'
         cache: 'pip'
-
     - name: Install System Dependencies & Pip Packages
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-
     - name: Install Playwright Chromium Browser
       run: |
         python -m playwright install chromium
-
     - name: Execute Price Alert Script
       env:
         TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -35,4 +28,4 @@ jobs:
         SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
         SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
       run: |
-        python main.py
+        python checker.py
